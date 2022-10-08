@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "stm32f103xe.h": "c",
+        "system_stm32f1xx.h": "c",
+        "core_cm3.h": "c",
+        "stdint.h": "c",
+        "usart.h": "c",
+        "arm_math.h": "c"
+    }
+}
