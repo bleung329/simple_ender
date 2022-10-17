@@ -28,7 +28,7 @@ void USART1_Init() {
 	//11, Output mode, max speed 50 MHz
 	GPIOA->CRH |= GPIO_CRH_MODE9;	
 	//Clear CNF 9
-	GPIOA->CRH &= ~GPIO_CRH_CNF9;	
+	// GPIOA->CRH &= ~GPIO_CRH_CNF9;	
 	//Alt mode 10, output push pull
 	GPIOA->CRH |= GPIO_CRH_CNF9_1;	
 
@@ -36,7 +36,7 @@ void USART1_Init() {
 	// 00, input mode
 	GPIOA->CRH &= ~GPIO_CRH_MODE10;				
 	// Clear CNF 10
-	GPIOA->CRH &= ~GPIO_CRH_CNF10;				
+	// GPIOA->CRH &= ~GPIO_CRH_CNF10;				
 	// Floating input
 	GPIOA->CRH |= GPIO_CRH_CNF10_0;			
 
@@ -44,8 +44,8 @@ void USART1_Init() {
 	//Clear BRR
 	// USART1->BRR &= ~USART_BRR_DIV_Mantissa;
 	// USART1->BRR &= ~USART_BRR_DIV_Fraction;
-	USART1->BRR |= BRR_Mantissa << USART_BRR_DIV_Mantissa_Pos; 
-	USART1->BRR |= BRR_Fraction << USART_BRR_DIV_Fraction_Pos;
+	USART1->BRR |= (BRR_Mantissa << USART_BRR_DIV_Mantissa_Pos) & 0xffff; 
+	USART1->BRR |= (BRR_Fraction << USART_BRR_DIV_Fraction_Pos) & 0xffff;
 	// USART1->BRR |= APB2_CLK / USART1_BAUD_RATE;	// USARTx_BRR = APB2CLK / USART1_BAUD_RATE
 
 	//Enable USART
@@ -53,9 +53,9 @@ void USART1_Init() {
 	//Enable TX & RX
 	USART1->CR1 |= (USART_CR1_TE | USART_CR1_RE);
 	//Enable RX interrupt
-	USART1->CR1 |= USART_CR1_RXNEIE;
+	// USART1->CR1 |= USART_CR1_RXNEIE;
 	//Enable USART1 global interrupt in the NVIC
-	NVIC_EnableIRQ(USART1_IRQn);				// USART1 global Interrupt
+	// NVIC_EnableIRQ(USART1_IRQn);				// USART1 global Interrupt
 	// NVIC_SetPriority(USART1_IRQn,0);
 }
 
@@ -112,7 +112,7 @@ void USART1_IRQHandler() {
 	{
 		char rx = (char)(USART1->DR & 0xff);
 
-		if ((rx == '\r') || (rx == '\n')) 
+		if (rx == '\n')
 		{
 			usart1_buffer[usart1_index] = 0;			// Add terminating NULL
 			usart1_index = 0;
@@ -129,8 +129,8 @@ void USART1_IRQHandler() {
 			usart1_ready = 0;
 		}
 		USART1->SR &= ~USART_SR_RXNE;		// USART_SR_RXNE clear. This clearing sequence is recommended only for multibuffer communication.
-		
 	}
+
 }
 
 uint8_t USART1_Ready()

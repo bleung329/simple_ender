@@ -30,8 +30,8 @@ void Timer_Init()
     TIM4->DIER &= ~(TIM_DIER_UIE | TIM_DIER_CC1IE);
     //Dont enable clocks yet
     // TIM4->CR1 |= TIM_CR1_CEN;
-    NVIC_EnableIRQ(TIM3_IRQn);
-    NVIC_EnableIRQ(TIM4_IRQn);
+    // NVIC_EnableIRQ(TIM3_IRQn);
+    // NVIC_EnableIRQ(TIM4_IRQn);
     // NVIC_SetPriority(TIM3_IRQn,1);
     // NVIC_SetPriority(TIM4_IRQn,2);
 

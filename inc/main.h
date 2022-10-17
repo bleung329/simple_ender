@@ -16,5 +16,5 @@
 #include "timer.h"
 
 extern volatile uint8_t usart1_ready;
-
+extern volatile uint8_t usart1_index;
 #endif
