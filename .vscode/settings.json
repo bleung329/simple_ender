@@ -5,6 +5,8 @@
         "core_cm3.h": "c",
         "stdint.h": "c",
         "usart.h": "c",
-        "arm_math.h": "c"
+        "arm_math.h": "c",
+        "timer.h": "c",
+        "rcc.h": "c"
     }
 }

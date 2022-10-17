@@ -7,12 +7,14 @@
 #define HOME_CMD 'h'
 #define STOP_CMD 's'
 #define HOME_DONE_CMD 'H'
-#define MOVE_DONE_CMD 'D'
+#define MOVE_DONE_CMD "D\n"
+#define ALIVE_CMD 'A'
 
 #include "rcc.h"
 #include "usart.h"
 #include "gpio.h"
 #include "timer.h"
 
+extern volatile uint8_t usart1_ready;
 
 #endif

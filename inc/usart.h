@@ -16,15 +16,17 @@ extern "C" {
 
 #include "stm32f103xe.h"
 
-#define USART1_BUFFER_SIZE ((uint8_t)16)		// Real size is USART1_BUFFER_SIZE - 1, last element is for terminating null
-#define APB2_CLK           ((uint32_t)24000000)
+#define USART1_BUFFER_SIZE 256		// Real size is USART1_BUFFER_SIZE - 1, last element is for terminating null
+#define APB2_CLK           ((uint32_t)48000000)
 #define USART1_BAUD_RATE   ((uint32_t)38400) //Lets start off by trying out 9600 baud. 38400 instead?
-#define BRR_Mantissa 39
-#define BRR_Fraction 1
+// #define BRR_Mantissa 78
+// #define BRR_Fraction 2
+#define BRR_Mantissa 312
+#define BRR_Fraction 8
 
 void USART1_Init();
 void USART1_SendChar(char chr);
-void USART1_SendString(char *str);
+void USART1_SendString(char *str, uint8_t len);
 uint8_t USART1_ReadString(char *str);
 uint8_t USART1_Ready();
 
