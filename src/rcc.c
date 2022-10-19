@@ -15,15 +15,15 @@ void RCC_Init()
     //Turn the PLL on
     RCC->CR |= RCC_CR_PLLON;
     //Clear AHB prescaler to ensure sysclock:AHBclock is 1:1
-    RCC->CFGR &= ~RCC_CFGR_HPRE;
+    // RCC->CFGR &= ~RCC_CFGR_HPRE;
     //Clear APB2 prescaler to ensure sysclock:APB2clock is 1:1 
-    RCC->CFGR &= ~RCC_CFGR_PPRE2;
+    // RCC->CFGR &= ~RCC_CFGR_PPRE2;
     //Set APB1 prescaler to ensure sysclock:APB1clock is 4:1, 12 MHz
     RCC->CFGR |= RCC_CFGR_PPRE1_DIV4;
     // RCC->CFGR &= RCC_CFGR_SW;
     RCC->CFGR |= RCC_CFGR_SW_PLL;
 
-    SystemCoreClockUpdate();
+    // SystemCoreClockUpdate();
     // SysTick_Config(ST_PERIOD);
     
     //Wait to ensure that the PLL is selected as the system clock source

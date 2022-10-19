@@ -50,12 +50,17 @@ uint8_t home_z = 0;
 char rx_buffer[USART1_BUFFER_SIZE] = {0};
 
 
-char beep[] = {'b','e','e','p','\n'};
+const char beep[] = {'b','e','e','p','\n'};
 // char xm[] = {'x','e','e','p','\n'};
-// char mx[] = {'m','e','e','p','\n'};
-char al[] = {'a','l','v','\n'};
+const char home_done[] = {'H','\n'};
+const char done[] = {'D','\n'};
+const char al[] = {'a','l','v','\n'};
+
+char* rx_temp;
 
 int main(){
+
+    
 
     //Set up clock related stuff
     RCC_Init();
@@ -78,20 +83,20 @@ int main(){
     //Actual op loop
     while(1)
     {
+         
         //If something is read from the USART buffer
-        //if (USART1_ReadString(rx_buffer))
+        // if (USART1_ReadString(rx_buffer))
         if (th_flag || bh_flag)
         {
-            char* rx_temp;
-            rx_temp = &rx_buffer[0];
+            rx_temp = &rx_buffer[0]; 
             if (bh_flag)
             {
                 bh_flag = 0;
             }
             if (th_flag)
             {
-                rx_temp = &rx_buffer[14];
                 th_flag = 0;
+                rx_temp = &rx_buffer[14];
             }
             //Disable usart ready until next string is ready.
             //The first byte tells which command it is, 
@@ -118,12 +123,12 @@ int main(){
                 home_x = 1;
                 home_z = 1;
 
-                x_step_duration = 1600;
+                x_step_duration = 1500;
                 x_step_half = x_step_duration/2;
                 //Set the auto reload register of TIM3 to the step duration
                 TIM3->ARR = 0xffff & (x_step_duration);
                 
-                z_step_duration = 1600;
+                z_step_duration = 1500;
                 z_step_half = z_step_duration/2;
                 //Set the auto reload register of TIM4 to the step duration
                 TIM4->ARR = 0xffff & (z_step_duration);
@@ -155,6 +160,7 @@ int main(){
             //Start moving
             if (rx_temp[0] == START_MOVE_CMD)
             {
+                //Enable the steppers
                 enable_steppers(1);
                 //Pull GPIO pins low
                 x_step(0);
@@ -190,22 +196,18 @@ int main(){
                 z_dir(1);
 
                 //Back off 
-                for (int i = 0; i < 800; i++)
-                {
-                    z_step(1);
-                    t_delay_ms(5);
-                    z_step(0);
-                    t_delay_ms(5);
-                }
-                for (int i = 0; i < 160; i++)
-                {
-                    x_step(1);
-                    t_delay_ms(5);
-                    x_step(0);
-                    t_delay_ms(5);
-                }
-                USART1_SendString(HOME_DONE_CMD,2);
-
+                // for (int i = 0; i < 800; i++)
+                // {
+                //     z_step(1);
+                //     x_step(1);
+                //     t_delay_ms(3);
+                //     z_step(0);
+                //     x_step(0);
+                //     t_delay_ms(3);
+                // }
+                x_step_count = 0;
+                z_step_count = 0;
+                USART1_SendString(home_done,2);
                 //Disable steppers
                 enable_steppers(0);
             }
@@ -215,7 +217,7 @@ int main(){
         {   
             
             //Send a done message
-            USART1_SendString(MOVE_DONE_CMD,2);
+            USART1_SendString(done,2);
             //Pull GPIO pins low
             x_step(0);
             z_step(0);

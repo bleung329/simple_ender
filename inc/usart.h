@@ -25,8 +25,7 @@ extern "C" {
 // #define BRR_Fraction 8U
 
 extern char rx_buffer[USART1_BUFFER_SIZE];
-extern volatile uint8_t th_flag;
-extern volatile uint8_t bh_flag;
+extern volatile uint8_t th_flag, bh_flag;
 
 void USART1_Init();
 void USART1_SendChar(char chr);

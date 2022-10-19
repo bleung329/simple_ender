@@ -20,7 +20,7 @@ void USART1_Init() {
 	//Activate USART clock
 	RCC->APB2ENR |= RCC_APB2ENR_USART1EN;		
 	//Activate GPIO port A 
-	RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;			
+	// RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;			
 	//Activate alternate function so we can access UART
 	// RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;			
 
@@ -47,7 +47,6 @@ void USART1_Init() {
 	// USART1->BRR &= ~USART_BRR_DIV_Fraction;
 	USART1->BRR |= (BRR_Mantissa << USART_BRR_DIV_Mantissa_Pos) & 0xffff; 
 	USART1->BRR |= (BRR_Fraction << USART_BRR_DIV_Fraction_Pos) & 0xffff;
-	// USART1->BRR |= APB2_CLK / USART1_BAUD_RATE;	// USARTx_BRR = APB2CLK / USART1_BAUD_RATE
 
 	//Enable USART
 	USART1->CR1 |= USART_CR1_UE;
@@ -65,7 +64,7 @@ void USART1_Init() {
 // -----------------------------------------------
 void USART1_SendChar(char ch) {
 	while (!(USART1->SR & USART_SR_TXE));		// 0: Data is not transferred to the shift register
-	// USART1->SR &= ~USART_SR_TC;					// USART_SR_TC clear. This clearing sequence is recommended only for multibuffer communication.
+	USART1->SR &= ~USART_SR_TC;					// USART_SR_TC clear. This clearing sequence is recommended only for multibuffer communication.
 	
 	USART1->DR = (char)(ch & 0xff);
 }
@@ -92,7 +91,7 @@ uint8_t USART1_ReadString(char *str) {
 			i++)
 		{
 			str[i] = usart1_buffer[i];		// Copy volatile buffer to external buffer
-			usart1_buffer[i] = 0;
+			// usart1_buffer[i] = 0;
 		}
 
 		str[i] = 0;							// Add terminating NULL to external buffer
@@ -115,7 +114,7 @@ void USART1_IRQHandler() {
 
 		if (rx == '\n')
 		{
-			// usart1_buffer[usart1_index] = 0;			// Add terminating NULL
+			usart1_buffer[usart1_index] = 0;			// Add terminating NULL
 			usart1_index = 0;
 			usart1_ready = 1;
 		} 
@@ -142,9 +141,9 @@ void USART1_DMA_Init() {
 	//Activate USART clock
 	RCC->APB2ENR |= RCC_APB2ENR_USART1EN;		
 	//Activate GPIO port A 
-	RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;			
+	// RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;			
 	//Activate alternate function so we can access UART
-	// RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+	RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
 	//Activate DMA1 clock
 	RCC->AHBENR |= RCC_AHBENR_DMA1EN;
 
@@ -206,6 +205,8 @@ void USART1_DMA_Init() {
 	DMA1_Channel5->CCR |= DMA_CCR_EN;
 	//Enable the DMA interrupt
 	NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+	//Set DMA interrupt 
+	NVIC_SetPriority(DMA1_Channel5_IRQn,0);
 	
 }
 
