@@ -57,11 +57,11 @@ void enable_steppers(uint8_t on)
 {
     if (on)
     {
-        GPIOC->BSRR |= GPIO_BSRR_BR3;
+        GPIOC->BSRR = GPIO_BSRR_BR3;
     }
     else
     {
-        GPIOC->BSRR |= GPIO_BSRR_BS3;
+        GPIOC->BSRR = GPIO_BSRR_BS3;
     }
 }
 
@@ -69,23 +69,11 @@ void enable_case_fan(uint8_t on)
 {
     if (on)
     {
-        GPIOA->BSRR |= GPIO_BSRR_BS0;
+        GPIOA->BSRR = GPIO_BSRR_BS0;
     }
     else
     {
-        GPIOA->BSRR |= GPIO_BSRR_BR0;
-    }
-}
-
-void x_step(uint8_t level)
-{
-    if (level)
-    {
-        GPIOC->BSRR |= GPIO_BSRR_BS2;
-    }
-    else
-    {
-        GPIOC->BSRR |= GPIO_BSRR_BR2;
+        GPIOA->BSRR = GPIO_BSRR_BR0;
     }
 }
 
@@ -93,11 +81,23 @@ void x_dir(uint8_t level)
 {
     if (level)
     {
-        GPIOB->BSRR |= GPIO_BSRR_BS9;
+        GPIOC->BSRR = GPIO_BSRR_BS2;
     }
     else
     {
-        GPIOB->BSRR |= GPIO_BSRR_BR9;
+        GPIOC->BSRR = GPIO_BSRR_BR2;
+    }
+}
+
+void x_step(uint8_t level)
+{
+    if (level)
+    {
+        GPIOB->BSRR = GPIO_BSRR_BS9;
+    }
+    else
+    {
+        GPIOB->BSRR = GPIO_BSRR_BR9;
     }
 }
 
@@ -105,11 +105,11 @@ void z_step(uint8_t level)
 {
     if (level)
     {
-        GPIOB->BSRR |= GPIO_BSRR_BS5;
+        GPIOB->BSRR = GPIO_BSRR_BS5;
     }
     else
     {
-        GPIOB->BSRR |= GPIO_BSRR_BR5;
+        GPIOB->BSRR = GPIO_BSRR_BR5;
     }
 }
 
@@ -117,11 +117,11 @@ void z_dir(uint8_t level)
 {
     if (level)
     {
-        GPIOB->BSRR |= GPIO_BSRR_BS6;
+        GPIOB->BSRR = GPIO_BSRR_BR6;
     }
     else
     {
-        GPIOB->BSRR |= GPIO_BSRR_BR6;
+        GPIOB->BSRR = GPIO_BSRR_BS6;
     }
 }
 

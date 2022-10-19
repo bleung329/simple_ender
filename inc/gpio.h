@@ -25,8 +25,6 @@ X Min = PA5
 Z Min = PA7
 Stepper Enable = PC3
 */
-#define X_STEP
-
 
 void GPIO_Init();
 void enable_steppers(uint8_t on);

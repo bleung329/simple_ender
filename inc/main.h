@@ -6,7 +6,7 @@
 #define START_MOVE_CMD 'm'
 #define HOME_CMD 'h'
 #define STOP_CMD 's'
-#define HOME_DONE_CMD 'H'
+#define HOME_DONE_CMD "H\n"
 #define MOVE_DONE_CMD "D\n"
 #define ALIVE_CMD 'A'
 

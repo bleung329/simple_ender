@@ -1,54 +1,58 @@
 #include "../inc/main.h"
-#include <math.h>
 
 //Example serial message
 //x 0 01000 120000
-//Move message
+//Set steps message
 //x006000012120
-//m
+//x102000001212
+//Alive message
+//A000000000000
+//Start move message
+//m000000000000
 //stepper dir step_duration_us number_of_steps
-uint32_t step_count_parse(char* rx_buff)
+void step_count_parse(char* rx_buff, int32_t* step_count)
 {
     //Was previously uint16_t... will this solve the issue?
-    uint32_t temp = 0;
-    for (uint8_t idx = 6; idx < 12; idx++)
+    *step_count = 0;
+    for (uint8_t idx = 7; idx < 13; idx++)
     {
-        temp = temp*10+(rx_buff[idx]-'0');
+        int32_t from_rx = (int32_t)(rx_buff[idx]-'0');
+        *step_count = *step_count*10+from_rx;
     }
-    return temp;
 }
 
-uint16_t step_duration_parse(char* rx_buff)
+uint32_t step_duration_parse(char* rx_buff)
 {  
-    uint16_t temp = 0;
-    for (uint8_t idx = 2; idx < 6; idx++)
+    uint32_t temp = 0;
+    for (uint8_t idx = 2; idx < 7; idx++)
     {
-        temp = temp*10+(rx_buff[idx]-'0');
+        
+        temp = temp*10+(uint32_t)(rx_buff[idx]-'0');
         //Why does pow() add 8 kb to program size? Who fuckin knows.
         //temp += (rx_buff[idx]-'0')*pow(10,5-idx);
     }
     return temp;
 }
 
+volatile uint8_t th_flag, bh_flag = 0;
+
 uint8_t move_flag = 0;
-volatile uint32_t x_step_count = 0;
-uint16_t x_step_duration = 0;
-uint16_t x_time = 0;
+int32_t x_step_count = 0;
+uint32_t x_step_duration = 0;
+uint32_t x_step_half = 0;
 
-volatile uint32_t z_step_count = 0;
-uint16_t z_step_duration = 0;
-uint16_t z_time = 0;
+int32_t z_step_count = 0;
+uint32_t z_step_duration = 0;
+uint32_t z_step_half = 0;
 
-uint8_t xmov = 0;
-uint8_t zmov = 0;
-
-volatile uint8_t homing = 0;
+uint8_t home_x = 0;
+uint8_t home_z = 0;
 char rx_buffer[USART1_BUFFER_SIZE] = {0};
 
 
 char beep[] = {'b','e','e','p','\n'};
-char xm[] = {'x','e','e','p','\n'};
-char mx[] = {'m','e','e','p','\n'};
+// char xm[] = {'x','e','e','p','\n'};
+// char mx[] = {'m','e','e','p','\n'};
 char al[] = {'a','l','v','\n'};
 
 int main(){
@@ -63,13 +67,10 @@ int main(){
     Timer_Init();
 
     //Set up UART
-    USART1_Init();
+    USART1_DMA_Init();
     
     //Disable the steppers
     enable_steppers(0);
-
-    //Turn on case fan?
-    enable_case_fan(1);
 
     //Send an alive command
     USART1_SendString(beep,5);
@@ -77,173 +78,182 @@ int main(){
     //Actual op loop
     while(1)
     {
-        //Check if theres a new char in the RDR and add it to the char buffer.
-        //If RDR is not empty:
-        if (USART1->SR & USART_SR_RXNE) 
-	    {
-            //Acquire the char from the RDR
-            char rx = (char)(USART1->DR & 0xff);
-            //If newline, great, seal it up and read the 
-            if (rx == '\n')
-            {
-                // rx_buffer[usart1_index] = 0;			// Add terminating NULL
-                usart1_index = 0;
-                usart1_ready = 1;
-            } 
-            else 
-            {
-                if (usart1_index >= USART1_BUFFER_SIZE - 1)
-                {	
-                    // If overflows, reset index
-                    usart1_index = 0;
-                }
-                rx_buffer[usart1_index++] = rx;
-                // usart1_ready = 0;
-            }
-		    // USART1->SR &= ~USART_SR_RXNE;		// USART_SR_RXNE clear. This clearing sequence is recommended only for multibuffer communication.
-        }
-
         //If something is read from the USART buffer
-        if (usart1_ready)
+        //if (USART1_ReadString(rx_buffer))
+        if (th_flag || bh_flag)
         {
+            char* rx_temp;
+            rx_temp = &rx_buffer[0];
+            if (bh_flag)
+            {
+                bh_flag = 0;
+            }
+            if (th_flag)
+            {
+                rx_temp = &rx_buffer[14];
+                th_flag = 0;
+            }
             //Disable usart ready until next string is ready.
-            usart1_ready = 0;
             //The first byte tells which command it is, 
             //respond accordingly.
-            //Stop everything
-            if (rx_buffer[0] == STOP_CMD)
+            //Stop everything.
+            if (rx_temp[0] == STOP_CMD)
             {
                 enable_steppers(0);
                 x_step_count = 0;
                 z_step_count = 0;
-                homing = 0;
+                home_x = 0;
+                home_z = 0;
                 move_flag = 0;
                 x_step(0);
                 z_step(0);
             }
             //Home the device
-            if (rx_buffer[0] == HOME_CMD)
+            if (rx_temp[0] == HOME_CMD)
             {
 
                 //Set direction backwards.
                 x_dir(0);
                 z_dir(0);
-                homing = 1;
-            }
-            //Move X
-            if (rx_buffer[0] == X_MOVE_CMD)
-            {   
-                USART1_SendString(rx_buffer,16);
-                x_step_count = step_count_parse(rx_buffer);
-                x_step_duration = step_duration_parse(rx_buffer);
+                home_x = 1;
+                home_z = 1;
+
+                x_step_duration = 1600;
+                x_step_half = x_step_duration/2;
                 //Set the auto reload register of TIM3 to the step duration
                 TIM3->ARR = 0xffff & (x_step_duration);
-                TIM3->CCR1 = 0xffff & (x_step_duration>>1);
-                x_dir(rx_buffer[1]-'0');
-                xmov = 1;
-            }
-            //Move Z
-            if (rx_buffer[0] == Z_MOVE_CMD)
-            {
-
-                z_step_count = step_count_parse(rx_buffer);
-                z_step_duration = step_duration_parse(rx_buffer);
+                
+                z_step_duration = 1600;
+                z_step_half = z_step_duration/2;
                 //Set the auto reload register of TIM4 to the step duration
                 TIM4->ARR = 0xffff & (z_step_duration);
-                TIM4->CCR1 = 0xffff & (z_step_duration>>1);
-                z_dir(rx_buffer[1]-'0');
-                zmov = 1;
-            }
-            //Start moving
-            if (rx_buffer[0] == START_MOVE_CMD)
-            {
 
                 enable_steppers(1);
-                if (xmov)
-                {
-                    //Set Timers to 0 
-                    TIM3->CNT = 0;
-                    TIM3->SR &= ~(TIM_SR_UIF | TIM_SR_CC1IF);
-                    TIM3->DIER |= (TIM_DIER_UIE | TIM_DIER_CC1IE);
-                    TIM3->CR1 |= TIM_CR1_CEN;
-                    GPIOC->BSRR |= GPIO_BSRR_BR2;
-
-                }
-                if (zmov)
-                {
-                    TIM4->CNT = 0;
-                    //Clear status regs
-                    TIM4->SR &= ~(TIM_SR_UIF | TIM_SR_CC1IF);
-                    //Pull GPIO pins low
-                    GPIOB->BSRR |= GPIO_BSRR_BR5;
-                    //Enable interrupts 
-                    TIM4->DIER |= (TIM_DIER_UIE | TIM_DIER_CC1IE);
-                    //Start counting
-                    TIM4->CR1 |= TIM_CR1_CEN;
-                }
+            }
+            //Move X
+            if (rx_temp[0] == X_MOVE_CMD)
+            {   
+                USART1_SendString(rx_temp,14);
+                step_count_parse(rx_temp,&x_step_count);
+                x_step_duration = step_duration_parse(rx_temp);
+                x_step_half = x_step_duration/2;
+                //Set the auto reload register of TIM3 to the step duration
+                TIM3->ARR = 0xffff & (x_step_duration);
+                x_dir(rx_temp[1]-'0');
+            }
+            //Move Z
+            if (rx_temp[0] == Z_MOVE_CMD)
+            {
+                USART1_SendString(rx_temp,14);
+                step_count_parse(rx_temp,&z_step_count);
+                z_step_duration = step_duration_parse(rx_temp);
+                z_step_half = z_step_duration/2;
+                //Set the auto reload register of TIM4 to the step duration
+                TIM4->ARR = 0xffff & (z_step_duration);
+                z_dir(rx_temp[1]-'0');
+            }
+            //Start moving
+            if (rx_temp[0] == START_MOVE_CMD)
+            {
+                enable_steppers(1);
+                //Pull GPIO pins low
+                x_step(0);
+                z_step(0);
                 //move flag is on
                 move_flag = 1;
-                USART1_SendString(mx,5);
+                // USART1_SendString(mx,5);
             }
-            if (rx_buffer[0] == ALIVE_CMD)
+            if (rx_temp[0] == ALIVE_CMD)
             {
                 USART1_SendString(al,4);
             }
             //Not sure what command was requested, do nothing
         } 
         //Home 
-        // if (homing)
-        // {
-        //     //Move X step backwards
-        //     if (!read_x_lim())
-        //     {
-        //         z_step(1);
-        //         t_delay_ms(20);
-        //         z_step(0);
-        //         t_delay_ms(20);
-        //     }
-        //     //Move Z step backwards
-        //     if (!read_z_lim())
-        //     {
-        //         z_step(1);
-        //         t_delay_ms(20);
-        //         z_step(0);
-        //         t_delay_ms(20);
-        //     }
-        //     //If both triggered, stop homing and send homing done.
-        //     if (read_x_lim() && read_z_lim())
-        //     {
-        //         USART1_SendChar(HOME_DONE_CMD);
-        //         USART1_SendChar('\n');
-        //         homing = 0;
-        //     }
-        // }
+        if (home_x || home_z)
+        {
+            //Move X step backwards
+            if (read_x_lim())
+            {
+                home_x = 0;
+            }
+            //Move Z step backwards
+            if (read_z_lim())
+            {
+                home_z = 0;
+            }
+            //If both triggered, stop homing and send homing done.
+            if (!home_z && !home_x)
+            {
+                //Forward
+                x_dir(1);
+                z_dir(1);
+
+                //Back off 
+                for (int i = 0; i < 800; i++)
+                {
+                    z_step(1);
+                    t_delay_ms(5);
+                    z_step(0);
+                    t_delay_ms(5);
+                }
+                for (int i = 0; i < 160; i++)
+                {
+                    x_step(1);
+                    t_delay_ms(5);
+                    x_step(0);
+                    t_delay_ms(5);
+                }
+                USART1_SendString(HOME_DONE_CMD,2);
+
+                //Disable steppers
+                enable_steppers(0);
+            }
+        }
         //If all steps are complete, send a "move complete" back to the host
-        // if (!x_step_count && !z_step_count && move_flag)
-        // {   
+        if (move_flag && !x_step_count && !z_step_count)
+        {   
             
-        //     //Send a done message
-        //     USART1_SendString(MOVE_DONE_CMD,2);
-        //     //Pull GPIO pins low
-        //     GPIOB->BSRR |= GPIO_BSRR_BR5;
-        //     GPIOC->BSRR |= GPIO_BSRR_BR2;
-        //     //Disable move flag
-        //     move_flag = 0;
-        //     enable_steppers(0);
-        // }
-        // //Disable interrupts if the step count is down to 0
-        // if (!x_step_count && xmov)
-        // {
-        //     xmov = 0;
-        //     TIM3->CR1 &= ~TIM_CR1_CEN;
-        //     TIM3->DIER &= ~(TIM_DIER_UIE | TIM_DIER_CC1IE);
-        // }
-        // if (!z_step_count && zmov)
-        // {
-        //     zmov = 0;
-        //     TIM4->CR1 &= ~TIM_CR1_CEN;
-        //     TIM4->DIER &= ~(TIM_DIER_UIE | TIM_DIER_CC1IE);
-        // }
+            //Send a done message
+            USART1_SendString(MOVE_DONE_CMD,2);
+            //Pull GPIO pins low
+            x_step(0);
+            z_step(0);
+            //Disable move flag
+            move_flag = 0;
+            //Disable steppers
+            enable_steppers(0);
+        }
+        if ((move_flag && x_step_count > 0) || (home_x))
+        {
+            if (TIM3->CNT > x_step_half && !(GPIOB->ODR & GPIO_ODR_ODR9))
+            {
+                GPIOB->BSRR = GPIO_BSRR_BS9;
+                x_step_count--;
+            }
+            else
+            {
+                if (TIM3->CNT < x_step_half && GPIOB->ODR & GPIO_ODR_ODR9)
+                {
+                    GPIOB->BSRR = GPIO_BSRR_BR9;
+                }
+            }
+        }
+        if ((move_flag && z_step_count > 0) || (home_z))
+        {
+            if (TIM4->CNT > z_step_half && !(GPIOB->ODR & GPIO_ODR_ODR5))
+            {
+                GPIOB->BSRR = GPIO_BSRR_BS5;
+                z_step_count--;
+            }
+            else
+            {
+                if (TIM4->CNT < z_step_half && GPIOB->ODR & GPIO_ODR_ODR5)
+                {
+                    GPIOB->BSRR = GPIO_BSRR_BR5;
+                }
+            }
+        }
     }
     return 0;
 }
