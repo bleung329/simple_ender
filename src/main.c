@@ -138,6 +138,7 @@ int main(){
             //Move X
             if (rx_temp[0] == X_MOVE_CMD)
             {   
+                //Echo it back
                 USART1_SendString(rx_temp,14);
                 step_count_parse(rx_temp,&x_step_count);
                 x_step_duration = step_duration_parse(rx_temp);
@@ -149,6 +150,7 @@ int main(){
             //Move Z
             if (rx_temp[0] == Z_MOVE_CMD)
             {
+                //Echo it back
                 USART1_SendString(rx_temp,14);
                 step_count_parse(rx_temp,&z_step_count);
                 z_step_duration = step_duration_parse(rx_temp);
@@ -160,6 +162,8 @@ int main(){
             //Start moving
             if (rx_temp[0] == START_MOVE_CMD)
             {
+                //Echo it back
+                USART1_SendString(rx_temp,14);
                 //Enable the steppers
                 enable_steppers(1);
                 //Pull GPIO pins low
@@ -167,7 +171,6 @@ int main(){
                 z_step(0);
                 //move flag is on
                 move_flag = 1;
-                // USART1_SendString(mx,5);
             }
             if (rx_temp[0] == ALIVE_CMD)
             {
