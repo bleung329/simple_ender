@@ -57,11 +57,11 @@ void enable_steppers(uint8_t on)
 {
     if (on)
     {
-        GPIOC->BSRR = GPIO_BSRR_BR3;
+        GPIOC->ODR &= GPIO_BSRR_BS3;
     }
     else
     {
-        GPIOC->BSRR = GPIO_BSRR_BS3;
+        GPIOC->ODR |= GPIO_ODR_ODR3;
     }
 }
 

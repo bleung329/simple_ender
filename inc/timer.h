@@ -10,7 +10,7 @@
 //Timer4 is 1 us ticked
 #define TIMER4_PRESCALER 24
 
-extern int32_t x_step_count, z_step_count;
+
 
 void Timer_Init();
 uint16_t get_time_us();
