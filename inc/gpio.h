@@ -20,6 +20,8 @@ X Step = PB9
 X Dir  = PC2
 Z Step = PB5
 Z Dir  = PB6
+E Step = PB3
+E Dir  = PB4
 
 X Min = PA5
 Z Min = PA7
@@ -33,6 +35,8 @@ void x_step(uint8_t level);
 void x_dir(uint8_t level);
 void z_step(uint8_t level);
 void z_dir(uint8_t level);
+void e_step(uint8_t level);
+void e_dir(uint8_t level);
 uint16_t read_x_lim();
 uint16_t read_z_lim();
 uint16_t read_dtr();

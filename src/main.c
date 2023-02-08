@@ -14,7 +14,7 @@ void step_count_parse(char* rx_buff, int32_t* step_count)
 {
     //Was previously uint16_t... will this solve the issue?
     *step_count = 0;
-    for (uint8_t idx = 7; idx < 13; idx++)
+    for (uint8_t idx = 7; idx < 13; ++idx)
     {
         int32_t from_rx = (int32_t)(rx_buff[idx]-'0');
         *step_count = *step_count*10+from_rx;
@@ -24,7 +24,7 @@ void step_count_parse(char* rx_buff, int32_t* step_count)
 void step_duration_parse(char* rx_buff, uint32_t* step_duration)
 {  
     *step_duration=0;
-    for (uint8_t idx = 2; idx < 7; idx++)
+    for (uint8_t idx = 2; idx < 7; ++idx)
     {
         uint32_t from_rx = (uint32_t)(rx_buff[idx]-'0');
         *step_duration = *step_duration*10+from_rx;
@@ -32,7 +32,8 @@ void step_duration_parse(char* rx_buff, uint32_t* step_duration)
     
 }
 
-volatile uint8_t th_flag, bh_flag = 0;
+volatile uint8_t th_flag = 0;
+volatile uint8_t bh_flag = 0;
 
 
 char rx_buffer[USART1_BUFFER_SIZE] = {0};
@@ -50,6 +51,10 @@ uint32_t x_step_half = 0;
 int32_t z_step_count = 0;
 uint32_t z_step_duration = 0;
 uint32_t z_step_half = 0;
+
+int32_t e_step_count = 0;
+uint32_t e_step_duration = 0;
+uint32_t e_step_half = 0;
 
 uint8_t home_x = 0;
 uint8_t home_z = 0;
@@ -92,27 +97,11 @@ int main(){
             if (th_flag)
             {
                 th_flag = 0;
-                rx_temp = &rx_buffer[14];
+                rx_temp = &(rx_buffer[14]);
             }
-            //Disable usart ready until next string is ready.
-            //The first byte tells which command it is, 
-            //respond accordingly.
-            //Stop everything.
-            // if (rx_temp[0] == STOP_CMD)
-            // {
-            //     // enable_steppers(1);
-            //     x_step_count = 0;
-            //     z_step_count = 0;
-            //     home_x = 0;
-            //     home_z = 0;
-            //     move_flag = 0;
-            //     // x_step(0);
-            //     // z_step(0);
-            // }
             //Home the device
             if (rx_temp[0] == HOME_CMD)
             {
-                
                 //Set direction backwards.
                 x_dir(0);
                 z_dir(0);
@@ -120,12 +109,12 @@ int main(){
                 home_z = 1;
 
                 x_step_duration = 1500;
-                x_step_half = x_step_duration/2;
+                x_step_half = x_step_duration>>1;
                 //Set the auto reload register of TIM3 to the step duration
                 TIM3->ARR = 0xffff & (x_step_duration);
                 
                 z_step_duration = 1500;
-                z_step_half = z_step_duration/2;
+                z_step_half = z_step_duration>>1;
                 //Set the auto reload register of TIM4 to the step duration
                 TIM4->ARR = 0xffff & (z_step_duration);
 
@@ -136,7 +125,7 @@ int main(){
             {   
                 step_count_parse(rx_temp,&x_step_count);
                 step_duration_parse(rx_temp,&x_step_duration);
-                x_step_half = x_step_duration/2;
+                x_step_half = x_step_duration>>1;
                 //Set the auto reload register of TIM3 to the step duration
                 TIM3->ARR = 0xffff & (x_step_duration);
                 x_dir(rx_temp[1]-'0');
@@ -149,10 +138,23 @@ int main(){
             {
                 step_count_parse(rx_temp,&z_step_count);
                 step_duration_parse(rx_temp,&z_step_duration);
-                z_step_half = z_step_duration/2;
+                z_step_half = z_step_duration>>1;
                 //Set the auto reload register of TIM4 to the step duration
                 TIM4->ARR = 0xffff & (z_step_duration);
                 z_dir(rx_temp[1]-'0');
+                // GPIOB->BSRR = GPIO_BSRR_BR5;
+                //Echo it back
+                USART1_SendString(rx_temp,14);
+            }
+            //Move turntable
+            if (rx_temp[0] == E_MOVE_CMD)
+            {
+                step_count_parse(rx_temp,&e_step_count);
+                step_duration_parse(rx_temp,&e_step_duration);
+                e_step_half = e_step_duration>>1;
+                //Set the auto reload register of TIM4 to the step duration
+                TIM4->ARR = 0xffff & (e_step_duration);
+                e_dir(rx_temp[1]-'0');
                 // GPIOB->BSRR = GPIO_BSRR_BR5;
                 //Echo it back
                 USART1_SendString(rx_temp,14);
@@ -194,16 +196,6 @@ int main(){
                 // x_dir(1);
                 // z_dir(1);
 
-                //Back off 
-                // for (int i = 0; i < 800; i++)
-                // {
-                //     z_step(1);
-                //     x_step(1);
-                //     t_delay_ms(3);
-                //     z_step(0);
-                //     x_step(0);
-                //     t_delay_ms(3);
-                // }
                 x_step_count = 0;
                 z_step_count = 0;
                 USART1_SendString(home_done,2);
@@ -212,7 +204,7 @@ int main(){
             }
         }
         //If all steps are complete, send a "move complete" back to the host
-        if (move_flag && x_step_count==0 && z_step_count==0)
+        if (move_flag && !x_step_count && !z_step_count)
         {   
             
             //Send a done message
@@ -255,7 +247,25 @@ int main(){
                 }
             }
         }
-        __ASM("nop");
+        //TODO: Fill out the rest of the extruder step stuff
+        //TODO: Also, maybe replace all the register calls with actual step things
+        if ((move_flag && e_step_count > 0))
+        {
+            if ((TIM4->CNT > e_step_half) && !(GPIOB->ODR & GPIO_ODR_ODR5))
+            {
+                e_step(1);
+                e_step_count--;
+            }
+            else
+            {
+                if ((TIM4->CNT < e_step_half) && (GPIOB->ODR & GPIO_ODR_ODR5))
+                {
+                    e_step(0);
+                }
+            }
+        }
+        __asm("nop");
+        // __asm("nop");
     }
     return 0;
 }

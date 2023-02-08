@@ -31,6 +31,7 @@ void USART1_Init() {
 	// GPIOA->CRH &= ~GPIO_CRH_CNF9;	
 	//Alt mode 10, output push pull
 	GPIOA->CRH |= GPIO_CRH_CNF9_1;
+	
 	GPIOA->CRH &= ~GPIO_CRH_CNF9_0;	
 
 	// RX float input (PA10)
@@ -74,7 +75,7 @@ void USART1_SendChar(char ch) {
 // -----------------------------------------------
 void USART1_SendString(char *str, uint8_t len) {
 
-	for (uint8_t i = 0; i < len; i++) {
+	for (uint8_t i = 0; i < len; ++i) {
 		USART1_SendChar(str[i]);
 	}
 	while (!(USART1->SR & USART_SR_TC));
@@ -88,7 +89,7 @@ uint8_t USART1_ReadString(char *str) {
 	if (usart1_ready) {
 		for (; 
 			i < USART1_BUFFER_SIZE && usart1_buffer[i] != 0;
-			i++)
+			++i)
 		{
 			str[i] = usart1_buffer[i];		// Copy volatile buffer to external buffer
 			// usart1_buffer[i] = 0;

@@ -34,6 +34,12 @@ void GPIO_Init()
     //Setup Z dir (PB6)
     GPIOB->CRL |= GPIO_CRL_MODE6_1; //Output mode, max speed 2 mhz
     GPIOB->CRL &= ~GPIO_CRL_CNF6; //Output mode, standard push pull
+    //Setup E step (PB3)
+    GPIOB->CRL |= GPIO_CRL_MODE3_0; //Output mode, max speed 10 mhz
+    GPIOB->CRL &= ~GPIO_CRL_CNF3; //Output mode, standard push pull
+    //Setup E dir (PB4)
+    GPIOB->CRL |= GPIO_CRL_MODE4_1; //Output mode, max speed 2 mhz
+    GPIOB->CRL &= ~GPIO_CRL_CNF4; //Output mode, standard push pull
     //Setup stepper enable (PC3)
     GPIOC->CRL |= GPIO_CRL_MODE3_1; //Output mode, max speed 2 mhz
     GPIOC->CRL &= ~GPIO_CRL_CNF3; //Output mode, standard push pull
@@ -122,6 +128,30 @@ void z_dir(uint8_t level)
     else
     {
         GPIOB->BSRR = GPIO_BSRR_BS6;
+    }
+}
+
+void e_step(uint8_t level)
+{
+    if (level)
+    {
+        GPIOB->BSRR = GPIO_BSRR_BS3;
+    }
+    else
+    {
+        GPIOB->BSRR = GPIO_BSRR_BR3;
+    }
+}
+
+void e_dir(uint8_t level)
+{
+    if (level)
+    {
+        GPIOB->BSRR = GPIO_BSRR_BR4;
+    }
+    else
+    {
+        GPIOB->BSRR = GPIO_BSRR_BS4;
     }
 }
 
